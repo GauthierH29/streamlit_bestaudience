@@ -12,70 +12,6 @@ from st_files_connection import FilesConnection
 conn = st.experimental_connection('gcs', type=FilesConnection)
 df = conn.read("bucket-test-bestaudience/data_base_le_wagon.csv", input_format="csv", ttl=600, sep=";")
 
-# Print results.
-print(df.head())
-
-def calculate_similarity(client1, client2):
-    # Obtention des produits achetés par les clients
-    products1 = set(client1["Produit - Forme"])
-    products2 = set(client2["Produit - Forme"])
-
-    # Calcul de l'intersection des produits achetés
-    common_products = products1.intersection(products2)
-
-    # Calcul des longueurs des vecteurs
-    len1 = np.sqrt(len(products1))
-    len2 = np.sqrt(len(products2))
-
-    # Calcul de la similarité cosinus
-    similarity = len(common_products) / (len1 * len2)
-
-    return similarity
-
-# Fonction pour obtenir les clients similaires
-def get_similar_customers(client_id, k=10):
-    # Récupération des données du client
-    client_data = data[data["Client - ID"] == client_id]
-
-    # Obtention des colonnes pertinentes pour le calcul de similarité
-    relevant_columns = ["Client - ID", "Client - Date de Naissance", "Client - Civilité", "Produit - Forme"]  # Remplacez "Column1" et "Column2" par les colonnes appropriées
-
-    # Calcul de la similarité avec les autres clients
-    similarity_scores = data[relevant_columns].apply(lambda row: calculate_similarity(client_data[relevant_columns], row[relevant_columns]), axis=1)
-
-    # Obtention des indices des clients similaires
-    similar_customer_indices = similarity_scores.nlargest(k+1).index  # +1 pour exclure le client lui-même
-
-    # Récupération des clients similaires
-    similar_customers = data.loc[similar_customer_indices, ["Client - ID", "Client - Date de Naissance", "Client - Civilité", "Produit - Forme"] ]  # Remplacez "Column1" et "Column2" par les colonnes appropriées
-
-    return similar_customers
-
-# Fonction pour obtenir les produits achetés
-def get_products_purchased(client_id, k=5):
-    # Récupération des données du client
-    client_data = data[data["Client - ID"] == client_id]
-
-    # Obtention des produits achetés par le client
-    products_purchased = client_data["Produit - Forme"].value_counts().nlargest(k)
-
-    return products_purchased
-
-def visualize_clusters(data, cluster_numbers):
-    # Filtrage des données pour les clusters sélectionnés
-    if len(cluster_numbers) > 0:
-        filtered_data = data
-
-        # Visualisation des clusters
-        sns.scatterplot(data=filtered_data, x='N Commandes', y='CA Produits HT')
-        plt.xlabel('Nombre de commandes')
-        plt.ylabel('Montant des ventes')
-        plt.title('Relation entre le nombre de commandes et le montant des ventes')
-        plt.legend()
-        st.pyplot(plt.gcf())
-    else:
-        st.warning("Sélectionnez au moins un cluster.")
-
 
 # Barre de navigation latérale
 st.sidebar.title("Best Audience")
@@ -116,6 +52,8 @@ if selected_page == "Profil":
             # Sauvegarde du fichier chargé dans la session
             session_state['data'] = pd.read_csv(csv_file)
             st.write("File uploaded successfully !")
+        else:
+            session_state['data'] = df
 # Code pour la page Profil ici
 
 elif selected_page == "Data Analysis":
@@ -183,17 +121,19 @@ elif selected_page == "Product Recomendation":
         if len(selected_clients) > 0:
             for client_id in selected_clients:
                 # Obtention des clients similaires pour chaque client sélectionné
-                similar_customers = get_similar_customers(client_id, k=10)
+                # à compléter
+                similar_customers = data['Client - ID']
 
                 # Obtention des produits achetés pour chaque client sélectionné
-                products_purchased = get_products_purchased(client_id, k=5)
+                # à compléter
+                products_purchased = data['Produit - Forme']
 
                 # Affichage des résultats
                 st.write(f"Client ID: {client_id}")
                 st.write("Top 10 clients similaires:")
-                st.table(similar_customers)
+                st.table(similar_customers[:10] )
                 st.write("Top 5 produits achetés:")
-                st.table(products_purchased)
+                st.table(products_purchased[:5])
         else:
             st.write("Aucun client sélectionné.")
 
@@ -231,7 +171,8 @@ elif selected_page == "Audience Recomendation":
             st.write(filtered_data)
 
             # Visualisation des clusters
-            visualize_clusters(filtered_data, cluster_numbers)
+            # à compléter
+            #visualize_clusters(filtered_data, cluster_numbers)
         else:
             st.write("Aucun cluster sélectionné.")
 
