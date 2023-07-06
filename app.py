@@ -1,8 +1,10 @@
 import streamlit as st
+import requests
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import json
 
 from sklearn.preprocessing import MinMaxScaler
 from st_files_connection import FilesConnection
@@ -11,7 +13,40 @@ from st_files_connection import FilesConnection
 # Specify input format is a csv and to cache the result for 600 seconds.
 conn = st.experimental_connection('gcs', type=FilesConnection)
 df = conn.read("bucket-test-bestaudience/data_base_le_wagon.csv", input_format="csv", ttl=600, sep=";")
+df_analyse_basics = conn.read("bucket-test-bestaudience/kmeans_basics_analyse.csv", input_format="csv", ttl=600)
+df_analyse_pca = conn.read("bucket-test-bestaudience/kmeans_pca_analyse.csv", input_format="csv", ttl=600)
 
+
+#####################################################API CALL#######################################################
+
+# Fonction pour faire une requête GET à l'API de prédiction K-means
+def get_kmeans_prediction(nb_k):
+    api_url = "http://127.0.0.1:8000/kmean/Predict"
+    response = requests.get(api_url, params={"nb_k": nb_k})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+# Fonction pour faire une requête GET à l'API de prédiction K-means avec PCA
+def get_kmeans_pca_prediction(nb_k):
+    api_url = "http://127.0.0.1:8000/kmean_pca/Predict"
+    response = requests.get(api_url, params={"nb_k": nb_k})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+# Fonction pour faire une requête GET à l'API de recommandation de produits
+def get_product_recommendation(user_ids, top_n_similar, top_n_products):
+    api_url = "http://127.0.0.1:8000/Recommend/Predict"
+    response = requests.get(api_url, params={"user_ids": user_ids, "top_n_similar": top_n_similar, "top_n_products": top_n_products})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+#####################################################API CALL#######################################################
 
 # Barre de navigation latérale
 st.sidebar.title("Best Audience")
@@ -104,7 +139,6 @@ elif selected_page == "Product Recomendation":
     # Page Product Recommendation
     st.title("Product Recomendation")
 
-    # Vérification si des données ont été chargées dans la session
     if 'data' in session_state:
         data = session_state['data']
 
@@ -115,31 +149,33 @@ elif selected_page == "Product Recomendation":
         client_list = data["Client - ID"].unique().tolist()
 
         # Sélection des clients
-        selected_clients = st.multiselect("Clients", options=client_list, default=[], help="Select clients")
+        selected_clients=st.text_input("Entrer les nom clients séparés par une virgule (ex: CLT91838,CLT32918,CLT94868,CLT20208,CLT81083)")
 
         # Vérification si des clients ont été sélectionnés
         if len(selected_clients) > 0:
-            for client_id in selected_clients:
-                # Obtention des clients similaires pour chaque client sélectionné
-                # à compléter
-                similar_customers = data['Client - ID']
 
-                # Obtention des produits achetés pour chaque client sélectionné
-                # à compléter
-                products_purchased = data['Produit - Forme']
+            # Sélection du nombre de clients similaires et de produits recommandés
+            top_n_similar = st.number_input("Nombre de clients similaires", min_value=1, value=10, step=1)
+            top_n_products = st.number_input("Nombre de produits recommandés", min_value=1, value=5, step=1)
 
-                # Affichage des résultats
-                st.write(f"Client ID: {client_id}")
-                st.write("Top 10 clients similaires:")
-                st.table(similar_customers[:10] )
-                st.write("Top 5 produits achetés:")
-                st.table(products_purchased[:5])
+            selected_chart = st.selectbox("Sélectionnez un client pour voir  :", selected_clients.split(","))
+
+            # Recommandation de produits
+            product_recommendation = get_product_recommendation(selected_clients, top_n_similar, top_n_products)
+            if product_recommendation is not None:
+                df_recommendations = {}
+                for client_id, recommendations in product_recommendation.items():
+                    # Création du DataFrame pour le tableau
+                    df_recommendations[str(client_id)] = pd.DataFrame(recommendations, columns=["Produit", "Score"])
+
+                # Affichage du tableau
+                if selected_chart in df_recommendations.keys() :
+                    st.write(df_recommendations[str(client_id)])
         else:
             st.write("Aucun client sélectionné.")
-
     else:
         st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
-# Code pour la page Product Recommendation ici
+
 
 elif selected_page == "Audience Recomendation":
     # Page Audience Recommendation
