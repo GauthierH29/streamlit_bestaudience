@@ -94,45 +94,105 @@ if selected_page == "Profil":
 # Code pour la page Profil ici
 
 elif selected_page == "Data Analysis":
-    # Page Data Analysis
+    plt.style.use('seaborn-whitegrid')
+
+    # Titre de la page
     st.title("Data Analysis")
+    row0_spacer1, row0_1, row0_spacer2, row0_spacer3 = st.columns((.1, 2.3, .1, .1))
+    row3_spacer1, row3_1, row3_spacer2 = st.columns((.1, 3.2, .1))
+    #intro
+    with row3_1:
+        st.markdown("Vous trouverez ici un aperçu rapide du tableau de données fourni dans l'onglet Analyse de profil. Il est toujours important de comprendre vos données avant de vous lancer dans l'apprentissage automatique ou toute autre analyse.😉")
 
     # Vérification si des données ont été chargées dans la session
     if 'data' in session_state:
         data = session_state['data']
 
         # Affichage des données
-        st.subheader("Aperçu des données")
-        st.write(data.head())
+        st.header("Aperçu des données")
+        with row3_1:
+            st.markdown("")
+        see_data = st.expander('Vous pouvez cliquer ici pour voir les données brutes 👉')
+        with see_data:
+            st.dataframe(data=data.reset_index(drop=True))
+        st.text('')
 
         # Analyse exploratoire des données
-        st.subheader("Analyse exploratoire des données")
+        st.header("Analyse exploratoire des données")
 
         # Statistiques descriptives
-        st.write("Statistiques descriptives :")
+        st.subheader("Statistiques descriptives")
         st.write(data.describe())
 
         # Visualisation des données
-        st.write("Visualisation des données :")
+        st.header("Visualisation des données")
 
-        # Exemple de visualisation : Histogramme
-        #st.write("Histogramme des valeurs de la colonne 'Age'")
-        #data['Client - Date de Naissance'] = pd.to_datetime(data['Client - Date de Naissance'])
-        #plt.hist(data['Client - Date de Naissance'].dt.year)
-        #st.pyplot()
+        # Choix du graphique à afficher
+        selected_chart = st.selectbox("Sélectionnez le type de graphique :", ["Graphique - Date de naissance par date", "Diagramme circulaire des genres", "Diagramme Ventes par produit", "Diagramme CA par date", "Diagramme répartition des sous catégories", "Tendances de création de compte"])
 
-        # Exemple de visualisation : Diagramme circulaire
-        #st.write("Diagramme circulaire des catégories de la colonne 'Sexe'")
-        #counts = data['Client - Civilité'].value_counts()
-        #plt.pie(counts, labels=counts.index, autopct='%1.1f%%')
-        #st.pyplot()
+        if selected_chart == "Graphique - Date de naissance par date":
+            # Exemple de visualisation : Histogramme
+            st.subheader("Histogramme des valeurs de la colonne 'Age'")
+            data['Client - Date de Naissance'] = pd.to_datetime(data['Client - Date de Naissance'], errors='coerce')
+            fig, ax = plt.subplots(facecolor='white')
+            ax.hist(data['Client - Date de Naissance'].dt.year, color='steelblue')
+            st.pyplot(fig)
 
-        # Exemple de visualisation : Diagramme en barres
-        #st.write("Diagramme en barres des ventes par produit")
-        #product_sales = data['Produit - Forme'].value_counts()
-        #sns.barplot(x=product_sales.index, y=product_sales.values)
-        #plt.xticks(rotation=45)
-        #st.pyplot()
+        elif selected_chart == "Diagramme circulaire des genres":
+            # Exemple de visualisation : Diagramme circulaire
+            st.subheader("Diagramme circulaire des catégories de la colonne 'Sexe'")
+            counts = data['Client - Civilité'].value_counts()
+            fig, ax = plt.subplots(facecolor='white')
+            ax.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#ff9999', '#66b3ff'])
+            ax.axis('equal')  # Pour s'assurer que le diagramme est circulaire
+            st.pyplot(fig)
+
+        elif selected_chart == "Diagramme Ventes par produit":
+            # Exemple de visualisation : Diagramme en barres
+            fig, ax = plt.subplots()
+            sns.countplot(data=data, x='Produit - Catégorie')
+            plt.xlabel('Produit')
+            plt.ylabel('Nombre de ventes')
+            plt.title("Répartition des ventes par produit")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+        elif selected_chart == "Diagramme CA par date":
+            data['DAY'] = pd.to_datetime(data['DAY'])
+
+            # Extraire le mois à partir de la colonne 'Date'
+            data['Mois'] = data['DAY'].dt.to_period('M')
+            data['CA HT'] = data['CA HT'].str.replace(',', '.').astype(float)
+            ca_par_date = data.groupby('Mois')['CA HT'].sum().reset_index()
+
+            fig, ax = plt.subplots()
+            sns.barplot(data=ca_par_date, x='Mois', y='CA HT')
+            plt.xlabel('Date')
+            plt.ylabel('Chiffre d\'affaires')
+            plt.title('Chiffre d\'affaires par date')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+        elif selected_chart == "Diagramme répartition des sous catégories":
+            fig, ax = plt.subplots()
+            commande_type_counts = df['Produit - Forme'].value_counts()
+            commande_type_counts.plot(kind='pie', autopct='%1.1f%%', figsize=(8, 8))
+            plt.title("Répartition des Catégorie")
+            plt.ylabel("")
+            st.pyplot(fig)
+
+        elif selected_chart == "Tendances de création de compte":
+            df['Client - Mois de Création'] = pd.to_datetime(df['Client - Mois de Création'], format='%Y%m')
+            df['Client - Mois de la première commande'] = pd.to_datetime(df['Client - Mois de la première commande'], format='%Y%m')
+            df['Client - Mois de la dernière commande'] = pd.to_datetime(df['Client - Mois de la dernière commande'], format='%Y%m')
+
+            fig, ax = plt.subplots()
+            df['Client - Mois de Création'].dt.to_period('M').value_counts().sort_index().plot(kind='line', figsize=(10, 6))
+            plt.title("Tendances de création de compte")
+            plt.xlabel("Mois")
+            plt.ylabel("Nombre de comptes créés")
+            st.pyplot(fig)
+
     else:
         st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
