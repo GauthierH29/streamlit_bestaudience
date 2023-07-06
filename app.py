@@ -4,10 +4,47 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 import json
+=======
+import time
+from dataviz import visualize_clusters,visualize_cluster_products
+import requests
+>>>>>>> main
 
 from sklearn.preprocessing import MinMaxScaler
 from st_files_connection import FilesConnection
+
+#####################################################API CALL#######################################################
+
+# Fonction pour faire une requête GET à l'API de prédiction K-means
+def get_kmeans_prediction(nb_k):
+    api_url = "http://127.0.0.1:8000/kmean/predict"
+    response = requests.get(api_url, params={"nb_k": nb_k})
+    if response.status_code == 200:
+        return pd.DataFrame(response.json())
+    else:
+        return None
+
+# Fonction pour faire une requête GET à l'API de prédiction K-means avec PCA
+def get_kmeans_pca_prediction(nb_k):
+    api_url = "http://127.0.0.1:8000/kmean_pca/predict"
+    response = requests.get(api_url, params={"nb_k": nb_k})
+    if response.status_code == 200:
+        return pd.DataFrame(response.json())
+    else:
+        return None
+
+# Fonction pour faire une requête GET à l'API de recommandation de produits
+def get_product_recommendation(user_ids, top_n_similar, top_n_products):
+    api_url = "http://127.0.0.1:8000/recommend/predict"
+    response = requests.get(api_url, params={"user_ids": user_ids, "top_n_similar": top_n_similar, "top_n_products": top_n_products})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+#####################################################API CALL#######################################################
 
 # Create connection object and retrieve file contents.
 # Specify input format is a csv and to cache the result for 600 seconds.
@@ -15,7 +52,10 @@ conn = st.experimental_connection('gcs', type=FilesConnection)
 df = conn.read("bucket-test-bestaudience/data_base_le_wagon.csv", input_format="csv", ttl=600, sep=";")
 df_analyse_basics = conn.read("bucket-test-bestaudience/kmeans_basics_analyse.csv", input_format="csv", ttl=600)
 df_analyse_pca = conn.read("bucket-test-bestaudience/kmeans_pca_analyse.csv", input_format="csv", ttl=600)
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 
 #####################################################API CALL#######################################################
 
@@ -89,50 +129,114 @@ if selected_page == "Profil":
             st.write("File uploaded successfully !")
         else:
             session_state['data'] = df
+            session_state['df_analyse_basics']=df_analyse_basics
+            session_state['df_analyse_pca']=df_analyse_pca
 # Code pour la page Profil ici
 
 elif selected_page == "Data Analysis":
-    # Page Data Analysis
+    plt.style.use('seaborn-whitegrid')
+
+    # Titre de la page
     st.title("Data Analysis")
+    row0_spacer1, row0_1, row0_spacer2, row0_spacer3 = st.columns((.1, 2.3, .1, .1))
+    row3_spacer1, row3_1, row3_spacer2 = st.columns((.1, 3.2, .1))
+    #intro
+    with row3_1:
+        st.markdown("Vous trouverez ici un aperçu rapide du tableau de données fourni dans l'onglet Analyse de profil. Il est toujours important de comprendre vos données avant de vous lancer dans l'apprentissage automatique ou toute autre analyse.😉")
 
     # Vérification si des données ont été chargées dans la session
     if 'data' in session_state:
         data = session_state['data']
 
         # Affichage des données
-        st.subheader("Aperçu des données")
-        st.write(data.head())
+        st.header("Aperçu des données")
+        with row3_1:
+            st.markdown("")
+        see_data = st.expander('Vous pouvez cliquer ici pour voir les données brutes 👉')
+        with see_data:
+            st.dataframe(data=data.reset_index(drop=True))
+        st.text('')
 
         # Analyse exploratoire des données
-        st.subheader("Analyse exploratoire des données")
+        st.header("Analyse exploratoire des données")
 
         # Statistiques descriptives
-        st.write("Statistiques descriptives :")
+        st.subheader("Statistiques descriptives")
         st.write(data.describe())
 
         # Visualisation des données
-        st.write("Visualisation des données :")
+        st.header("Visualisation des données")
 
-        # Exemple de visualisation : Histogramme
-        st.write("Histogramme des valeurs de la colonne 'Age'")
-        data['Client - Date de Naissance'] = pd.to_datetime(data['Client - Date de Naissance'])
-        plt.hist(data['Client - Date de Naissance'].dt.year)
-        st.pyplot()
+        # Choix du graphique à afficher
+        selected_chart = st.selectbox("Sélectionnez le type de graphique :", ["Graphique - Date de naissance par date", "Diagramme circulaire des genres", "Diagramme Ventes par produit", "Diagramme CA par date", "Diagramme répartition des sous catégories", "Tendances de création de compte"])
 
-        # Exemple de visualisation : Diagramme circulaire
-        st.write("Diagramme circulaire des catégories de la colonne 'Sexe'")
-        counts = data['Client - Civilité'].value_counts()
-        plt.pie(counts, labels=counts.index, autopct='%1.1f%%')
-        st.pyplot()
+        if selected_chart == "Graphique - Date de naissance par date":
+            # Exemple de visualisation : Histogramme
+            st.subheader("Histogramme des valeurs de la colonne 'Age'")
+            data['Client - Date de Naissance'] = pd.to_datetime(data['Client - Date de Naissance'], errors='coerce')
+            fig, ax = plt.subplots(facecolor='white')
+            ax.hist(data['Client - Date de Naissance'].dt.year, color='steelblue')
+            st.pyplot(fig)
 
-        # Exemple de visualisation : Diagramme en barres
-        st.write("Diagramme en barres des ventes par produit")
-        product_sales = data['Produit - Forme'].value_counts()
-        sns.barplot(x=product_sales.index, y=product_sales.values)
-        plt.xticks(rotation=45)
-        st.pyplot()
+        elif selected_chart == "Diagramme circulaire des genres":
+            # Exemple de visualisation : Diagramme circulaire
+            st.subheader("Diagramme circulaire des catégories de la colonne 'Sexe'")
+            counts = data['Client - Civilité'].value_counts()
+            fig, ax = plt.subplots(facecolor='white')
+            ax.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#ff9999', '#66b3ff'])
+            ax.axis('equal')  # Pour s'assurer que le diagramme est circulaire
+            st.pyplot(fig)
+
+        elif selected_chart == "Diagramme Ventes par produit":
+            # Exemple de visualisation : Diagramme en barres
+            fig, ax = plt.subplots()
+            sns.countplot(data=data, x='Produit - Catégorie')
+            plt.xlabel('Produit')
+            plt.ylabel('Nombre de ventes')
+            plt.title("Répartition des ventes par produit")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+        elif selected_chart == "Diagramme CA par date":
+            data['DAY'] = pd.to_datetime(data['DAY'])
+
+            # Extraire le mois à partir de la colonne 'Date'
+            data['Mois'] = data['DAY'].dt.to_period('M')
+            data['CA HT'] = data['CA HT'].str.replace(',', '.').astype(float)
+            ca_par_date = data.groupby('Mois')['CA HT'].sum().reset_index()
+
+            fig, ax = plt.subplots()
+            sns.barplot(data=ca_par_date, x='Mois', y='CA HT')
+            plt.xlabel('Date')
+            plt.ylabel('Chiffre d\'affaires')
+            plt.title('Chiffre d\'affaires par date')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+        elif selected_chart == "Diagramme répartition des sous catégories":
+            fig, ax = plt.subplots()
+            commande_type_counts = df['Produit - Forme'].value_counts()
+            commande_type_counts.plot(kind='pie', autopct='%1.1f%%', figsize=(8, 8))
+            plt.title("Répartition des Catégorie")
+            plt.ylabel("")
+            st.pyplot(fig)
+
+        elif selected_chart == "Tendances de création de compte":
+            df['Client - Mois de Création'] = pd.to_datetime(df['Client - Mois de Création'], format='%Y%m')
+            df['Client - Mois de la première commande'] = pd.to_datetime(df['Client - Mois de la première commande'], format='%Y%m')
+            df['Client - Mois de la dernière commande'] = pd.to_datetime(df['Client - Mois de la dernière commande'], format='%Y%m')
+
+            fig, ax = plt.subplots()
+            df['Client - Mois de Création'].dt.to_period('M').value_counts().sort_index().plot(kind='line', figsize=(10, 6))
+            plt.title("Tendances de création de compte")
+            plt.xlabel("Mois")
+            plt.ylabel("Nombre de comptes créés")
+            st.pyplot(fig)
+
     else:
         st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
+
+    st.title("Product Recomendation")
 # Code pour la page Data Analysis ici
 
 elif selected_page == "Product Recomendation":
@@ -180,41 +284,111 @@ elif selected_page == "Product Recomendation":
 elif selected_page == "Audience Recomendation":
     # Page Audience Recommendation
     st.title("Audience Recomendation")
+    pages_audience = ["pca","kmeans"]
+    selected_page_audience = st.radio("Modèles", pages_audience)
 
-    # Vérification si des données ont été chargées dans la session
-    if 'data' in session_state:
-        data = session_state['data']
+    if selected_page_audience == "kmeans":
+        st.markdown('___')
+        st.subheader('Modèle Kmeans')
+        nb_k = st.slider('Combien de clusters ?', 1, 30)
+        labels=get_kmeans_prediction(nb_k)
 
-        # Affichage du DataFrame
-        st.subheader("Données brutes")
-        st.write(data)
+        # Vérification si des données ont été chargées dans la session
+        if 'data' in session_state:
+            data = session_state['data']
+            if labels is not None:
+                labels = labels.rename(columns={'labels': 'Cluster Label'})
+                df_def = pd.concat([df_analyse_basics,labels],axis=1)
 
-        # Description statistique du DataFrame
-        st.subheader("Description statistique")
-        st.write(data.describe())
+                # Affichage des données
+                st.subheader("Aperçu des données labélisées")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def)
 
-        # Visualisation des clusters
-        st.subheader("Visualisation des clusters")
+                # Description statistique du DataFrame
+                st.subheader("Description statistique")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def.describe())
 
-        # Sélection des numéros de clusters
-        cluster_numbers = [1,2,3,7,8,13]
+                # Visualisation des clusters
+                st.subheader("Visualisation des clusters")
 
-        if len(cluster_numbers) > 0:
-            # Filtrage des données pour les clusters sélectionnés
-            filtered_data = data
+                # Sélection des numéros de clusters
+                cluster_numbers = sorted(labels['Cluster Label'].unique())
+                for i in range(len(cluster_numbers)):
+                    cluster_numbers[i]+=1
 
-            # Affichage du DataFrame filtré
-            st.write(filtered_data)
+                # Affichez les cases à cocher
+                cluster_numbers=st.multiselect("Selectionnez les clusters",cluster_numbers)
 
-            # Visualisation des clusters
-            # à compléter
-            #visualize_clusters(filtered_data, cluster_numbers)
+                with st.expander("Cliquez pour voir les graphiques :"):
+                    if len(cluster_numbers) > 0:
+                        # Filtrage des données pour les clusters sélectionnés
+                        filtered_data = data
+
+                        # Visualisation des clusters
+                        # Test méthode avec les clusters choisis
+                        visualize_clusters(df_def,cluster_numbers)
+                        #visualize_clusters(filtered_data, cluster_numbers)
+                    else:
+                        st.write("Aucun cluster sélectionné.")
+            else:
+                st.warning("Veuillez lancer l'api.")
+
         else:
-            st.write("Aucun cluster sélectionné.")
+            st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
-    else:
-        st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
-# Code pour la page Audience Recommendation ici
+    elif selected_page_audience == "pca":
+        st.markdown('___')
+        st.subheader('Modèle pca')
+        nb_k = st.slider('Combien de clusters ?', 1, 30)
+        labels=get_kmeans_pca_prediction(nb_k)
+
+        # Vérification si des données ont été chargées dans la session
+        if 'data' in session_state:
+            data = session_state['data']
+            if labels is not None:
+                labels = labels.rename(columns={'labels': 'Cluster Label'})
+                df_def = pd.concat([df_analyse_pca,labels],axis=1)
+
+                # Affichage des données
+                st.subheader("Aperçu des données labélisées")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def)
+
+                # Description statistique du DataFrame
+                st.subheader("Description statistique")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def.describe())
+
+                # Visualisation des clusters
+                st.subheader("Visualisation des clusters")
+
+                # Sélection des numéros de clusters
+                cluster_numbers = sorted(labels['Cluster Label'].unique())
+                for i in range(len(cluster_numbers)):
+                    cluster_numbers[i]+=1
+
+                # Affichez les cases à cocher
+                cluster_numbers=st.multiselect("Selectionnez les clusters",cluster_numbers)
+
+                with st.expander("Cliquez pour voir les graphiques :"):
+                    if len(cluster_numbers) > 0:
+                        # Filtrage des données pour les clusters sélectionnés
+                        filtered_data = data
+
+                        # Visualisation des clusters
+                        # Test méthode avec les clusters choisis
+                        visualize_cluster_products(df_def,cluster_numbers)
+                        #visualize_clusters(filtered_data, cluster_numbers)
+                    else:
+                        st.write("Aucun cluster sélectionné.")
+            else:
+                st.warning("Veuillez lancer l'api.")
+
+        else:
+            st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
+        # Code pour la page Audience Recommendation ici
 
 # Personnalisation de la mise en page
 st.sidebar.markdown("---")
