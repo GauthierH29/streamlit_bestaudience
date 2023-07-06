@@ -3,16 +3,50 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import time
+from dataviz import visualize_clusters,visualize_cluster_products
+import requests
 
 from sklearn.preprocessing import MinMaxScaler
 from st_files_connection import FilesConnection
 
+#####################################################API CALL#######################################################
+
+# Fonction pour faire une requête GET à l'API de prédiction K-means
+def get_kmeans_prediction(nb_k):
+    api_url = "http://127.0.0.1:8000/kmean/predict"
+    response = requests.get(api_url, params={"nb_k": nb_k})
+    if response.status_code == 200:
+        return pd.DataFrame(response.json())
+    else:
+        return None
+
+# Fonction pour faire une requête GET à l'API de prédiction K-means avec PCA
+def get_kmeans_pca_prediction(nb_k):
+    api_url = "http://127.0.0.1:8000/kmean_pca/predict"
+    response = requests.get(api_url, params={"nb_k": nb_k})
+    if response.status_code == 200:
+        return pd.DataFrame(response.json())
+    else:
+        return None
+
+# Fonction pour faire une requête GET à l'API de recommandation de produits
+def get_product_recommendation(user_ids, top_n_similar, top_n_products):
+    api_url = "http://127.0.0.1:8000/recommend/predict"
+    response = requests.get(api_url, params={"user_ids": user_ids, "top_n_similar": top_n_similar, "top_n_products": top_n_products})
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+#####################################################API CALL#######################################################
 
 # Create connection object and retrieve file contents.
 # Specify input format is a csv and to cache the result for 600 seconds.
 conn = st.experimental_connection('gcs', type=FilesConnection)
 df = conn.read("bucket-test-bestaudience/data_base_le_wagon.csv", input_format="csv", ttl=600, sep=";")
-
+df_analyse_basics = conn.read("bucket-test-bestaudience/kmeans_basics_analyse.csv", input_format="csv", ttl=600)
+df_analyse_pca = conn.read("bucket-test-bestaudience/kmeans_pca_analyse.csv", input_format="csv", ttl=600)
 
 # Barre de navigation latérale
 st.sidebar.title("Best Audience")
@@ -55,6 +89,8 @@ if selected_page == "Profil":
             st.write("File uploaded successfully !")
         else:
             session_state['data'] = df
+            session_state['df_analyse_basics']=df_analyse_basics
+            session_state['df_analyse_pca']=df_analyse_pca
 # Code pour la page Profil ici
 
 elif selected_page == "Data Analysis":
@@ -160,7 +196,7 @@ elif selected_page == "Data Analysis":
     else:
         st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
-
+    st.title("Product Recomendation")
 # Code pour la page Data Analysis ici
 
 elif selected_page == "Product Recomendation":
@@ -207,41 +243,111 @@ elif selected_page == "Product Recomendation":
 elif selected_page == "Audience Recomendation":
     # Page Audience Recommendation
     st.title("Audience Recomendation")
+    pages_audience = ["pca","kmeans"]
+    selected_page_audience = st.radio("Modèles", pages_audience)
 
-    # Vérification si des données ont été chargées dans la session
-    if 'data' in session_state:
-        data = session_state['data']
+    if selected_page_audience == "kmeans":
+        st.markdown('___')
+        st.subheader('Modèle Kmeans')
+        nb_k = st.slider('Combien de clusters ?', 1, 30)
+        labels=get_kmeans_prediction(nb_k)
 
-        # Affichage du DataFrame
-        st.subheader("Données brutes")
-        st.write(data)
+        # Vérification si des données ont été chargées dans la session
+        if 'data' in session_state:
+            data = session_state['data']
+            if labels is not None:
+                labels = labels.rename(columns={'labels': 'Cluster Label'})
+                df_def = pd.concat([df_analyse_basics,labels],axis=1)
 
-        # Description statistique du DataFrame
-        st.subheader("Description statistique")
-        st.write(data.describe())
+                # Affichage des données
+                st.subheader("Aperçu des données labélisées")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def)
 
-        # Visualisation des clusters
-        st.subheader("Visualisation des clusters")
+                # Description statistique du DataFrame
+                st.subheader("Description statistique")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def.describe())
 
-        # Sélection des numéros de clusters
-        cluster_numbers = [1,2,3,7,8,13]
+                # Visualisation des clusters
+                st.subheader("Visualisation des clusters")
 
-        if len(cluster_numbers) > 0:
-            # Filtrage des données pour les clusters sélectionnés
-            filtered_data = data
+                # Sélection des numéros de clusters
+                cluster_numbers = sorted(labels['Cluster Label'].unique())
+                for i in range(len(cluster_numbers)):
+                    cluster_numbers[i]+=1
 
-            # Affichage du DataFrame filtré
-            st.write(filtered_data)
+                # Affichez les cases à cocher
+                cluster_numbers=st.multiselect("Selectionnez les clusters",cluster_numbers)
 
-            # Visualisation des clusters
-            # à compléter
-            #visualize_clusters(filtered_data, cluster_numbers)
+                with st.expander("Cliquez pour voir les graphiques :"):
+                    if len(cluster_numbers) > 0:
+                        # Filtrage des données pour les clusters sélectionnés
+                        filtered_data = data
+
+                        # Visualisation des clusters
+                        # Test méthode avec les clusters choisis
+                        visualize_clusters(df_def,cluster_numbers)
+                        #visualize_clusters(filtered_data, cluster_numbers)
+                    else:
+                        st.write("Aucun cluster sélectionné.")
+            else:
+                st.warning("Veuillez lancer l'api.")
+
         else:
-            st.write("Aucun cluster sélectionné.")
+            st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
-    else:
-        st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
-# Code pour la page Audience Recommendation ici
+    elif selected_page_audience == "pca":
+        st.markdown('___')
+        st.subheader('Modèle pca')
+        nb_k = st.slider('Combien de clusters ?', 1, 30)
+        labels=get_kmeans_pca_prediction(nb_k)
+
+        # Vérification si des données ont été chargées dans la session
+        if 'data' in session_state:
+            data = session_state['data']
+            if labels is not None:
+                labels = labels.rename(columns={'labels': 'Cluster Label'})
+                df_def = pd.concat([df_analyse_pca,labels],axis=1)
+
+                # Affichage des données
+                st.subheader("Aperçu des données labélisées")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def)
+
+                # Description statistique du DataFrame
+                st.subheader("Description statistique")
+                with st.expander("Cliquez pour voir :"):
+                    st.write(df_def.describe())
+
+                # Visualisation des clusters
+                st.subheader("Visualisation des clusters")
+
+                # Sélection des numéros de clusters
+                cluster_numbers = sorted(labels['Cluster Label'].unique())
+                for i in range(len(cluster_numbers)):
+                    cluster_numbers[i]+=1
+
+                # Affichez les cases à cocher
+                cluster_numbers=st.multiselect("Selectionnez les clusters",cluster_numbers)
+
+                with st.expander("Cliquez pour voir les graphiques :"):
+                    if len(cluster_numbers) > 0:
+                        # Filtrage des données pour les clusters sélectionnés
+                        filtered_data = data
+
+                        # Visualisation des clusters
+                        # Test méthode avec les clusters choisis
+                        visualize_cluster_products(df_def,cluster_numbers)
+                        #visualize_clusters(filtered_data, cluster_numbers)
+                    else:
+                        st.write("Aucun cluster sélectionné.")
+            else:
+                st.warning("Veuillez lancer l'api.")
+
+        else:
+            st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
+        # Code pour la page Audience Recommendation ici
 
 # Personnalisation de la mise en page
 st.sidebar.markdown("---")
