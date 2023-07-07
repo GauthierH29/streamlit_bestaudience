@@ -53,7 +53,8 @@ def get_product_recommendation(user_ids, top_n_similar, top_n_products):
 #####################################################API CALL#######################################################
 
 # Barre de navigation latérale
-st.sidebar.title("Best Audience")
+#st.sidebar.title("Best Audience")
+st.sidebar.markdown('<h1 style="color: #ff6555ff;">Best Audience</h1>', unsafe_allow_html=True)
 
 # Personnalisation de la mise en page
 st.sidebar.markdown("---")
@@ -270,7 +271,7 @@ elif selected_page == "Segmentation Audience":
     # Page Audience Recommendation
     #st.title("Audience Recomendation")
     st.markdown("<h1 style='color: #ff6555ff;'>Segmentation Audience</h1>", unsafe_allow_html=True)
-    pages_audience = ["pca","kmeans"]
+    pages_audience = ["pca + kmeans","kmeans"]
     selected_page_audience = st.radio("Modèles", pages_audience)
 
     if selected_page_audience == "kmeans":
@@ -325,9 +326,9 @@ elif selected_page == "Segmentation Audience":
         else:
             st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
-    elif selected_page_audience == "pca":
+    elif selected_page_audience == "pca + kmeans":
         st.markdown('___')
-        st.subheader('Modèle pca')
+        st.subheader('Modèle pca + kmeans')
         nb_k = st.slider('Combien de clusters ?', 1, 30)
         labels=get_kmeans_pca_prediction(nb_k)
 
@@ -364,9 +365,18 @@ elif selected_page == "Segmentation Audience":
                         # Filtrage des données pour les clusters sélectionnés
                         filtered_data = data
 
+                        #selected_chart = st.selectbox("Sélectionnez le type de graphique :", ["Analyses propriétés utilisateurs", "Analyses propriétés produits"])
+
+                        #if selected_chart == "Graphique - Date de naissance par date":
+            # Exemple de visualisation : Histogramme
+                            #filtered_data = data
+                        visualize_clusters(df_def,cluster_numbers)
+                        #elif selected_chart == "Graphique - Date de naissance par date":
+
                         # Visualisation des clusters
                         # Test méthode avec les clusters choisis
-                        visualize_cluster_products(df_def,cluster_numbers)
+                            #filtered_data = data
+                            #visualize_cluster_products(df_def,cluster_numbers)
                         #visualize_clusters(filtered_data, cluster_numbers)
                     else:
                         st.write("Aucun cluster sélectionné.")
@@ -388,7 +398,7 @@ if st.sidebar.button("Contact"):
     st.subheader("Formulaire de contact")
 
     # Champ Nom
-    name = st.text_input("Nom")
+    naming = st.text_input("Nom Prénom")
 
     # Champ Email
     email = st.text_input("Email")
@@ -399,7 +409,7 @@ if st.sidebar.button("Contact"):
     # Bouton d'envoi du formulaire
     if st.button("Envoyer"):
         # Validation et traitement des données du formulaire
-        if not name or not email or not message:
+        if not naming or not email or not message:
             st.error("Veuillez remplir tous les champs du formulaire.")
         else:
             # Envoi du message ou traitement des données
