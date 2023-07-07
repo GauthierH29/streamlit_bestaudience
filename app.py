@@ -4,45 +4,13 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-<<<<<<< HEAD
 import json
-=======
 import time
 from dataviz import visualize_clusters,visualize_cluster_products
 import requests
->>>>>>> main
 
 from sklearn.preprocessing import MinMaxScaler
 from st_files_connection import FilesConnection
-
-#####################################################API CALL#######################################################
-
-# Fonction pour faire une requête GET à l'API de prédiction K-means
-def get_kmeans_prediction(nb_k):
-    api_url = "http://127.0.0.1:8000/kmean/predict"
-    response = requests.get(api_url, params={"nb_k": nb_k})
-    if response.status_code == 200:
-        return pd.DataFrame(response.json())
-    else:
-        return None
-
-# Fonction pour faire une requête GET à l'API de prédiction K-means avec PCA
-def get_kmeans_pca_prediction(nb_k):
-    api_url = "http://127.0.0.1:8000/kmean_pca/predict"
-    response = requests.get(api_url, params={"nb_k": nb_k})
-    if response.status_code == 200:
-        return pd.DataFrame(response.json())
-    else:
-        return None
-
-# Fonction pour faire une requête GET à l'API de recommandation de produits
-def get_product_recommendation(user_ids, top_n_similar, top_n_products):
-    api_url = "http://127.0.0.1:8000/recommend/predict"
-    response = requests.get(api_url, params={"user_ids": user_ids, "top_n_similar": top_n_similar, "top_n_products": top_n_products})
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return None
 
 #####################################################API CALL#######################################################
 
@@ -52,16 +20,12 @@ conn = st.experimental_connection('gcs', type=FilesConnection)
 df = conn.read("bucket-test-bestaudience/data_base_le_wagon.csv", input_format="csv", ttl=600, sep=";")
 df_analyse_basics = conn.read("bucket-test-bestaudience/kmeans_basics_analyse.csv", input_format="csv", ttl=600)
 df_analyse_pca = conn.read("bucket-test-bestaudience/kmeans_pca_analyse.csv", input_format="csv", ttl=600)
-<<<<<<< HEAD
-
-=======
->>>>>>> main
 
 #####################################################API CALL#######################################################
 
 # Fonction pour faire une requête GET à l'API de prédiction K-means
 def get_kmeans_prediction(nb_k):
-    api_url = "http://127.0.0.1:8000/kmean/Predict"
+    api_url = "http://127.0.0.1:8000/kmean/predict"
     response = requests.get(api_url, params={"nb_k": nb_k})
     if response.status_code == 200:
         return response.json()
@@ -70,7 +34,7 @@ def get_kmeans_prediction(nb_k):
 
 # Fonction pour faire une requête GET à l'API de prédiction K-means avec PCA
 def get_kmeans_pca_prediction(nb_k):
-    api_url = "http://127.0.0.1:8000/kmean_pca/Predict"
+    api_url = "http://127.0.0.1:8000/kmean_pca/predict"
     response = requests.get(api_url, params={"nb_k": nb_k})
     if response.status_code == 200:
         return response.json()
@@ -79,7 +43,7 @@ def get_kmeans_pca_prediction(nb_k):
 
 # Fonction pour faire une requête GET à l'API de recommandation de produits
 def get_product_recommendation(user_ids, top_n_similar, top_n_products):
-    api_url = "http://127.0.0.1:8000/Recommend/Predict"
+    api_url = "http://127.0.0.1:8000/recommend/predict"
     response = requests.get(api_url, params={"user_ids": user_ids, "top_n_similar": top_n_similar, "top_n_products": top_n_products})
     if response.status_code == 200:
         return response.json()
@@ -95,49 +59,64 @@ st.sidebar.title("Best Audience")
 st.sidebar.markdown("---")
 
 # Options de navigation
-pages = ["Profil", "Data Analysis", "Product Recomendation", "Audience Recomendation"]
+pages = ["Profil - Import", "Data Analyses", "Recommandation Produit", "Segmentation Audience"]
 selected_page = st.sidebar.radio("Navigation", pages)
 
 # Création de la session pour stocker les données
 session_state = st.session_state
 
 # Affichage des différentes pages
-if selected_page == "Profil":
+if selected_page == "Profil - Import":
     # Page Profil
-    st.title("Profil")
+    #st.title("Profil")
+    st.markdown("<h1 style='color: #ff6555ff;'>Profil - Import</h1>", unsafe_allow_html=True)
 
     # Utilisation de la grille CSS
     col1, col2 = st.columns([1, 1])  # Division en 2 colonnes de largeur égale
 
     # Colonne de gauche : Écrivez votre nom
     with col1:
-        st.subheader("Enter your Name")
-        name = st.text_input("Name")
+        st.subheader("Entrez votre nom")
+        name = st.text_input("Nom")
         if name:
-            st.markdown(f"<h1>Hello {name} !</h1>", unsafe_allow_html=True)
-            st.success("You can drop your CSV file right for the best comercial analysis !")
+            st.markdown(f"<h1>Bonjour {name} !</h1>", unsafe_allow_html=True)
+            st.success("Bienvenue sur Best Audience !")
+            st.write("Nous proposons des outils d'analyse commerciale puissants pour vous aider à prendre des décisions basées sur les données.")
         else:
-            st.warning("Please enter your name.")
+            st.warning("Veuillez entrer votre nom.")
+            st.empty()  # Supprime les messages précédents
 
     # Colonne de droite : Déposez le fichier
     with col2:
-        st.subheader("File Uploader")
-        csv_file = st.file_uploader("Upload a CSV", type="csv")
+        st.subheader("Téléchargez un fichier CSV")
+        st.write("Téléchargez un fichier CSV pour commencer")
+        st.write("Nos algorithmes d'analyse révéleront des informations à partir de vos données.")
+        csv_file = st.file_uploader("Télécharger un fichier CSV", type="csv")
         if csv_file is not None:
-            # Sauvegarde du fichier chargé dans la session
-            session_state['data'] = pd.read_csv(csv_file)
-            st.write("File uploaded successfully !")
+            st.success("Fichier téléchargé avec succès !")
+            st.write("Nous traiterons vos données et générerons des visualisations pertinentes.")
         else:
             session_state['data'] = df
             session_state['df_analyse_basics']=df_analyse_basics
             session_state['df_analyse_pca']=df_analyse_pca
+
+    # Bouton de validation
+    if st.button("Démarrer l'analyse"):
+        with st.spinner("Vos données sont en cours de traitement..."):
+            time.sleep(2)  # Simulation d'un traitement en cours
+            st.success("Analyse terminée !")
+            st.write("Vos données ont été prétraitées et analysées.")
+            st.write("Nous vous fournirons des informations adaptées à vos enjeux business.")
+            st.empty()  # Supprime les messages précédents
+
 # Code pour la page Profil ici
 
-elif selected_page == "Data Analysis":
+elif selected_page == "Data Analyses":
     plt.style.use('seaborn-whitegrid')
 
     # Titre de la page
-    st.title("Data Analysis")
+    #st.title("Data Analysis")
+    st.markdown("<h1 style='color: #ff6555ff;'>Data Analyses</h1>", unsafe_allow_html=True)
     row0_spacer1, row0_1, row0_spacer2, row0_spacer3 = st.columns((.1, 2.3, .1, .1))
     row3_spacer1, row3_1, row3_spacer2 = st.columns((.1, 3.2, .1))
     #intro
@@ -215,7 +194,7 @@ elif selected_page == "Data Analysis":
 
         elif selected_chart == "Diagramme répartition des sous catégories":
             fig, ax = plt.subplots()
-            commande_type_counts = df['Produit - Forme'].value_counts()
+            commande_type_counts = data['Produit - Forme'].value_counts()
             commande_type_counts.plot(kind='pie', autopct='%1.1f%%', figsize=(8, 8))
             plt.title("Répartition des Catégorie")
             plt.ylabel("")
@@ -236,12 +215,12 @@ elif selected_page == "Data Analysis":
     else:
         st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
-    st.title("Product Recomendation")
 # Code pour la page Data Analysis ici
 
-elif selected_page == "Product Recomendation":
+elif selected_page == "Recommandation Produit":
     # Page Product Recommendation
-    st.title("Product Recomendation")
+    #st.title("Product Recomendation")
+    st.markdown("<h1 style='color: #ff6555ff;'>Recommandation Produit</h1>", unsafe_allow_html=True)
 
     if 'data' in session_state:
         data = session_state['data']
@@ -253,14 +232,14 @@ elif selected_page == "Product Recomendation":
         client_list = data["Client - ID"].unique().tolist()
 
         # Sélection des clients
-        selected_clients=st.text_input("Entrer les nom clients séparés par une virgule (ex: CLT91838,CLT32918,CLT94868,CLT20208,CLT81083)")
+        selected_clients=st.text_input("Entrez les ID clients sous le format suivant : | séparés par une virgule | (ex: CLT91838,CLT32918,CLT94868,CLT20208,CLT81083) pour lesquels vous souhaitez avoir une recommandation produit")
 
         # Vérification si des clients ont été sélectionnés
         if len(selected_clients) > 0:
 
             # Sélection du nombre de clients similaires et de produits recommandés
-            top_n_similar = st.number_input("Nombre de clients similaires", min_value=1, value=10, step=1)
-            top_n_products = st.number_input("Nombre de produits recommandés", min_value=1, value=5, step=1)
+            top_n_similar = st.number_input("Choix du nombre de clients similaires sur lequel vous souhaitez baser votre recommandation :", min_value=1, value=10, step=1)
+            top_n_products = st.number_input("Choix du nombre de produits recommandés par clients similaires sélectionnés sur lequel vous souhaitez vous baser :", min_value=1, value=5, step=1)
 
             selected_chart = st.selectbox("Sélectionnez un client pour voir  :", selected_clients.split(","))
 
@@ -275,15 +254,22 @@ elif selected_page == "Product Recomendation":
                 # Affichage du tableau
                 if selected_chart in df_recommendations.keys() :
                     st.write(df_recommendations[str(client_id)])
+
+                #show_recommendations = st.checkbox("Afficher la liste complète de recommandations")
+                #if show_recommendations:
+                    #st.write(df_recommendations)
+
+
         else:
             st.write("Aucun client sélectionné.")
     else:
         st.warning("Veuillez charger un fichier CSV depuis la page Profil.")
 
 
-elif selected_page == "Audience Recomendation":
+elif selected_page == "Segmentation Audience":
     # Page Audience Recommendation
-    st.title("Audience Recomendation")
+    #st.title("Audience Recomendation")
+    st.markdown("<h1 style='color: #ff6555ff;'>Segmentation Audience</h1>", unsafe_allow_html=True)
     pages_audience = ["pca","kmeans"]
     selected_page_audience = st.radio("Modèles", pages_audience)
 
@@ -297,7 +283,8 @@ elif selected_page == "Audience Recomendation":
         if 'data' in session_state:
             data = session_state['data']
             if labels is not None:
-                labels = labels.rename(columns={'labels': 'Cluster Label'})
+                #labels = labels.rename(columns={'labels': 'Cluster Label'})
+                labels = pd.DataFrame.from_dict(labels).rename(columns={'labels': 'Cluster Label'})
                 df_def = pd.concat([df_analyse_basics,labels],axis=1)
 
                 # Affichage des données
@@ -348,7 +335,7 @@ elif selected_page == "Audience Recomendation":
         if 'data' in session_state:
             data = session_state['data']
             if labels is not None:
-                labels = labels.rename(columns={'labels': 'Cluster Label'})
+                labels = pd.DataFrame.from_dict(labels).rename(columns={'labels': 'Cluster Label'})
                 df_def = pd.concat([df_analyse_pca,labels],axis=1)
 
                 # Affichage des données
